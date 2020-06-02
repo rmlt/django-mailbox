@@ -390,6 +390,21 @@ class Mailbox(models.Model):
             )
         msg.save()
         message = self._get_dehydrated_message(message, msg)
+
+        # Monkey-patch email.message.replace_header to handle the
+        # "missing header" case, especially Content-Transfer-Encoding.
+        # This fixes message.as_string()
+        try:
+            EmailMessage.original_replace_header
+        except AttributeError:
+            EmailMessage.original_replace_header = EmailMessage.replace_header
+            def replace_header(self, _name, _value):
+                try:
+                    self.original_replace_header(_name, _value)
+                except KeyError:
+                    self._headers.append((_name, _value))
+            EmailMessage.replace_header = replace_header
+
         try:
             body = message.as_string()
         except KeyError as exc:
