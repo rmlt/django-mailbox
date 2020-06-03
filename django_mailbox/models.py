@@ -315,7 +315,10 @@ class Mailbox(models.Model):
                         "Attachment of type 'message/rfc822' "
                         'must have exactly 1 payload.'
                     )
-                attachment_payload = attachment_payloads[0].as_bytes()
+            elif record.id == 2963 and msg.get_content_type() =='message/delivery-status':
+                from base64 import b64decode
+
+                attachment_payload = b64decode(msg.get_payload(1)._payload)
             else:
                 attachment_payload = msg.get_payload(decode=True)
 
