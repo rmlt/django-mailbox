@@ -256,7 +256,7 @@ class Mailbox(models.Model):
         msg.save()
         return msg
 
-    def _get_dehydrated_message(self, msg, record):
+    def _get_dehydrated_message(self, msg, record, ids_of_messages_with_eml_attachments_with_attached_non_emls=[]):
         settings = utils.get_settings()
 
         new = EmailMessage()
@@ -268,7 +268,11 @@ class Mailbox(models.Model):
                 new[header] = value
             for part in msg.get_payload():
                 new.attach(
-                    self._get_dehydrated_message(part, record)
+                    self._get_dehydrated_message(
+                        part,
+                        record,
+                        ids_of_messages_with_eml_attachments_with_attached_non_emls=ids_of_messages_with_eml_attachments_with_attached_non_emls
+                    )
                 )
         elif (
             settings['strip_unallowed_mimetypes']
@@ -314,6 +318,30 @@ class Mailbox(models.Model):
                 attachment_payload = attachment_payloads[0].as_bytes()
             else:
                 attachment_payload = msg.get_payload(decode=True)
+
+            # Do not duplicate already existing non-eml attachments that were attached to .eml attachments
+            # Compare encoded names and lengths
+            # TODO remove when not needed
+            if (
+                attachment_payload is not None
+                and record.id in ids_of_messages_with_eml_attachments_with_attached_non_emls
+            ):
+                import re
+
+                existing_attachments = []
+                for a in record.attachments.all():
+                    match = re.search(r'filename="(.+)"', a.headers)
+                    filename = match.groups()[0] if match else None
+                    existing_attachments.append((filename, a.document.file.size))
+
+                content_disposition = [h for h in msg._headers if h[0] == 'Content-Disposition'][0][1]
+                match = re.search(r'filename="(.+)"', content_disposition)
+                filename = match.groups()[0] if match else None
+                new_attachment = (filename, len(attachment_payload))
+
+                if new_attachment in existing_attachments:
+                    return EmailMessage()  # do not save, return a placeholder
+
             attachment.document.save(
                 uuid.uuid4().hex + extension,
                 ContentFile(
