@@ -14,7 +14,7 @@ gmail_oauth2_require = [
 ]
 
 office365_oauth2_require = [
-    'O365',
+    'O365>=2.0.26',
 ]
 
 setup(

@@ -31,7 +31,12 @@ class Office365Transport(EmailTransport):
 
         credentials = (client_id, client_secret)
 
-        self.account = O365.Account(credentials, auth_flow_type='credentials', tenant_id=tenant_id)
+        self.account = O365.Account(
+            credentials,
+            auth_flow_type="credentials",
+            tenant_id=tenant_id,
+            default_headers={"Prefer": 'IdType="ImmutableId"'},
+        )
         self.account.authenticate()
 
         self.mailbox = self.account.mailbox(resource=self.username)
