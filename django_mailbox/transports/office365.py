@@ -1,4 +1,5 @@
 import logging
+import datetime as dt
 
 from django.conf import settings
 
@@ -51,7 +52,12 @@ class Office365Transport(EmailTransport):
             if not archive_folder:
                 archive_folder = self.mailbox.create_child_folder(self.archive)
 
-        for o365message in self.mailbox_folder.get_messages(order_by='receivedDateTime'):
+        # wait 10 minutes before fetching emails, due to "ATP Scan in progress" some attachments
+        # are empty when django-mailbox fetches them.
+        # TODO is there a field which says if the email has been scanned or not?
+        # TODO (optimize) this is only needed for emails with attachments
+        query = self.mailbox_folder.q('received_date_time').greater(dt.datetime.now() - dt.timedelta(minutes=10))
+        for o365message in self.mailbox_folder.get_messages(query=query):
             try:
                 mime_content = o365message.get_mime_content()
                 message = self.get_email_from_bytes(mime_content)
