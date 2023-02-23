@@ -56,7 +56,7 @@ class Office365Transport(EmailTransport):
         # are empty when django-mailbox fetches them.
         # TODO is there a field which says if the email has been scanned or not?
         # TODO (optimize) this is only needed for emails with attachments
-        query = self.mailbox_folder.q('received_date_time').greater(dt.datetime.now() - dt.timedelta(minutes=10))
+        query = self.mailbox_folder.q('received_date_time').less(dt.datetime.now() - dt.timedelta(minutes=10))
         for o365message in self.mailbox_folder.get_messages(query=query):
             try:
                 mime_content = o365message.get_mime_content()
